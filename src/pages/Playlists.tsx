@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
-import { supabase, Playlist, Song, PlaylistSong } from '../lib/supabase';
+import { supabase, Playlist, Song } from '../lib/supabase';
+import { fetchSongsForPlaylist } from '../lib/playlistQueries';
 import { useApp } from '../context/AppContext';
 import { Plus, Trash2, Play, X } from 'lucide-react';
 
-export default function Playlists() {
+type PlaylistsProps = {
+  /** When set (e.g. from Home), select this playlist once lists are loaded */
+  selectPlaylistId?: string | null;
+  onSelectPlaylistConsumed?: () => void;
+};
+
+export default function Playlists({ selectPlaylistId, onSelectPlaylistConsumed }: PlaylistsProps = {}) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistsReady, setPlaylistsReady] = useState(false);
   const [songs, setSongs] = useState<Song[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
@@ -12,7 +20,17 @@ export default function Playlists() {
   const [showAddSongModal, setShowAddSongModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [addSongError, setAddSongError] = useState<string | null>(null);
+  const [savingPlaylist, setSavingPlaylist] = useState(false);
   const { user, playSong } = useApp();
+
+  const formatDbError = (err: unknown): string => {
+    if (err && typeof err === 'object' && 'message' in err && typeof (err as { message: string }).message === 'string') {
+      return (err as { message: string }).message;
+    }
+    return 'Something went wrong. Check the browser console.';
+  };
 
   useEffect(() => {
     if (user) {
@@ -27,7 +45,17 @@ export default function Playlists() {
     }
   }, [selectedPlaylist]);
 
+  useEffect(() => {
+    if (!selectPlaylistId || !playlistsReady) return;
+    const match = playlists.find((p) => p.id === selectPlaylistId);
+    if (match) {
+      setSelectedPlaylist(match);
+    }
+    onSelectPlaylistConsumed?.();
+  }, [selectPlaylistId, playlists, playlistsReady, onSelectPlaylistConsumed]);
+
   const loadPlaylists = async () => {
+    setPlaylistsReady(false);
     try {
       const { data, error } = await supabase
         .from('playlists')
@@ -38,6 +66,8 @@ export default function Playlists() {
       setPlaylists(data || []);
     } catch (error) {
       console.error('Error loading playlists:', error);
+    } finally {
+      setPlaylistsReady(true);
     }
   };
 
@@ -54,22 +84,8 @@ export default function Playlists() {
 
   const loadPlaylistSongs = async (playlistId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('playlist_songs')
-        .select('song_id')
-        .eq('playlist_id', playlistId)
-        .order('position');
-
-      if (error) throw error;
-
-      const songIds = data.map((ps) => ps.song_id);
-      const { data: songsData, error: songsError } = await supabase
-        .from('songs')
-        .select('*')
-        .in('id', songIds);
-
-      if (songsError) throw songsError;
-      setPlaylistSongs(songsData || []);
+      const list = await fetchSongsForPlaylist(playlistId);
+      setPlaylistSongs(list);
     } catch (error) {
       console.error('Error loading playlist songs:', error);
     }
@@ -78,23 +94,35 @@ export default function Playlists() {
   const createPlaylist = async () => {
     if (!user || !newPlaylistName.trim()) return;
 
+    setCreateError(null);
+    setSavingPlaylist(true);
     try {
-      const { error } = await supabase.from('playlists').insert([
-        {
-          name: newPlaylistName,
-          description: newPlaylistDescription,
-          user_id: user.id,
-        },
-      ]);
+      const { data, error } = await supabase
+        .from('playlists')
+        .insert([
+          {
+            name: newPlaylistName.trim(),
+            description: (newPlaylistDescription || '').trim(),
+            user_id: user.id,
+          },
+        ])
+        .select()
+        .single();
 
       if (error) throw error;
 
       setNewPlaylistName('');
       setNewPlaylistDescription('');
       setShowCreateModal(false);
-      loadPlaylists();
+      await loadPlaylists();
+      if (data) {
+        setSelectedPlaylist(data);
+      }
     } catch (error) {
       console.error('Error creating playlist:', error);
+      setCreateError(formatDbError(error));
+    } finally {
+      setSavingPlaylist(false);
     }
   };
 
@@ -117,6 +145,7 @@ export default function Playlists() {
   const addSongToPlaylist = async (songId: string) => {
     if (!selectedPlaylist) return;
 
+    setAddSongError(null);
     try {
       const { error } = await supabase.from('playlist_songs').insert([
         {
@@ -128,10 +157,14 @@ export default function Playlists() {
 
       if (error) throw error;
 
-      loadPlaylistSongs(selectedPlaylist.id);
+      await loadPlaylistSongs(selectedPlaylist.id);
       setShowAddSongModal(false);
     } catch (error) {
       console.error('Error adding song to playlist:', error);
+      const msg = formatDbError(error);
+      setAddSongError(
+        msg.includes('duplicate') || msg.includes('unique') ? 'That song is already in this playlist.' : msg
+      );
     }
   };
 
@@ -159,14 +192,22 @@ export default function Playlists() {
 
   return (
     <div className="pb-32">
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-3xl font-bold text-gray-900">My Playlists</h2>
+      <div className="mb-8 flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-500">
+            Your library
+          </p>
+          <h2 className="text-[1.35rem] font-bold tracking-tight text-zinc-900 dark:text-white md:text-2xl">
+            Playlists
+          </h2>
+        </div>
         <button
+          type="button"
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 bg-[#4A90E2] text-white px-4 py-2 rounded-lg hover:bg-[#357ABD] transition"
+          className="flex shrink-0 items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
-          <Plus className="w-5 h-5" />
-          Create Playlist
+          <Plus className="h-4 w-4" strokeWidth={2.25} />
+          New
         </button>
       </div>
 
@@ -177,28 +218,29 @@ export default function Playlists() {
               {playlists.map((playlist) => (
                 <div
                   key={playlist.id}
-                  className={`bg-white p-4 rounded-lg shadow-sm cursor-pointer transition ${
+                  className={`cursor-pointer rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm transition dark:border-zinc-700/60 dark:bg-zinc-900 ${
                     selectedPlaylist?.id === playlist.id
-                      ? 'ring-2 ring-[#4A90E2]'
-                      : 'hover:shadow-md'
+                      ? 'ring-2 ring-[#4A90E2] dark:ring-[#4A90E2]/90'
+                      : 'hover:shadow-md dark:hover:border-zinc-600'
                   }`}
                   onClick={() => setSelectedPlaylist(playlist)}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">{playlist.name}</h3>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate font-semibold text-gray-900 dark:text-zinc-50">{playlist.name}</h3>
                       {playlist.description && (
-                        <p className="text-sm text-gray-600 truncate mt-1">
+                        <p className="mt-1 truncate text-sm text-gray-600 dark:text-zinc-400">
                           {playlist.description}
                         </p>
                       )}
                     </div>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         deletePlaylist(playlist.id);
                       }}
-                      className="p-2 text-gray-400 hover:text-red-500 transition"
+                      className="p-2 text-gray-400 transition hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -207,29 +249,45 @@ export default function Playlists() {
               ))}
             </div>
           ) : (
-            <div className="bg-white p-8 rounded-lg shadow-sm text-center">
-              <p className="text-gray-600">No playlists yet. Create your first one!</p>
+            <div className="rounded-xl border border-gray-200/80 bg-white p-8 text-center shadow-sm dark:border-zinc-700/60 dark:bg-zinc-900">
+              <p className="text-gray-600 dark:text-zinc-400">No playlists yet. Create your first one!</p>
             </div>
           )}
         </div>
 
         <div className="lg:col-span-2">
           {selectedPlaylist ? (
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-gray-900">{selectedPlaylist.name}</h3>
+            <div className="rounded-xl border border-gray-200/80 bg-white p-6 shadow-sm dark:border-zinc-700/60 dark:bg-zinc-900">
+              <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedPlaylist.name}</h3>
                   {selectedPlaylist.description && (
-                    <p className="text-gray-600 mt-1">{selectedPlaylist.description}</p>
+                    <p className="mt-1 text-gray-600 dark:text-zinc-400">{selectedPlaylist.description}</p>
                   )}
                 </div>
-                <button
-                  onClick={() => setShowAddSongModal(true)}
-                  className="flex items-center gap-2 bg-[#4A90E2] text-white px-4 py-2 rounded-lg hover:bg-[#357ABD] transition"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Song
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {playlistSongs.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => playSong(playlistSongs[0], playlistSongs)}
+                      className="flex items-center gap-2 rounded-full border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700"
+                    >
+                      <Play className="h-4 w-4" fill="currentColor" />
+                      Play
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAddSongError(null);
+                      setShowAddSongModal(true);
+                    }}
+                    className="flex items-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2.25} />
+                    Add songs
+                  </button>
+                </div>
               </div>
 
               {playlistSongs.length > 0 ? (
@@ -237,26 +295,26 @@ export default function Playlists() {
                   {playlistSongs.map((song) => (
                     <div
                       key={song.id}
-                      className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition group"
+                      className="group flex items-center gap-4 rounded-lg p-3 transition hover:bg-gray-50 dark:hover:bg-zinc-800/80"
                     >
                       <img
                         src={song.cover_image}
                         alt={song.title}
-                        className="w-12 h-12 rounded object-cover"
+                        className="h-12 w-12 rounded-md object-cover ring-1 ring-black/5 dark:ring-white/10"
                       />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{song.title}</p>
-                        <p className="text-sm text-gray-600 truncate">{song.artist}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-gray-900 dark:text-zinc-50">{song.title}</p>
+                        <p className="truncate text-sm text-gray-600 dark:text-zinc-400">{song.artist}</p>
                       </div>
                       <button
                         onClick={() => playSong(song, playlistSongs)}
-                        className="p-2 text-gray-400 hover:text-[#4A90E2] transition opacity-0 group-hover:opacity-100"
+                        className="p-2 text-gray-400 opacity-0 transition hover:text-[#4A90E2] group-hover:opacity-100 dark:text-zinc-500 dark:hover:text-[#6BA8E8]"
                       >
-                        <Play className="w-5 h-5" />
+                        <Play className="h-5 w-5" />
                       </button>
                       <button
                         onClick={() => removeSongFromPlaylist(song.id)}
-                        className="p-2 text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                        className="p-2 text-gray-400 opacity-0 transition hover:text-red-500 group-hover:opacity-100 dark:text-zinc-500 dark:hover:text-red-400"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -264,60 +322,70 @@ export default function Playlists() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-600 text-center py-8">
+                <p className="py-8 text-center text-gray-600 dark:text-zinc-400">
                   No songs in this playlist. Add some!
                 </p>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-              <p className="text-gray-600">Select a playlist to view its songs</p>
+            <div className="rounded-xl border border-dashed border-gray-200 bg-white p-12 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50">
+              <p className="text-gray-600 dark:text-zinc-400">Select a playlist to view its songs</p>
             </div>
           )}
         </div>
       </div>
 
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Create Playlist</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70">
+          <div className="w-full max-w-md rounded-xl border border-gray-200/80 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Create Playlist</h3>
               <button
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                type="button"
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setCreateError(null);
+                }}
+                className="rounded-lg p-2 transition hover:bg-gray-100 dark:hover:bg-zinc-800"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="h-5 w-5 text-gray-600 dark:text-zinc-400" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-zinc-300">Name</label>
                 <input
                   type="text"
                   value={newPlaylistName}
                   onChange={(e) => setNewPlaylistName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#4A90E2] dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500"
                   placeholder="My Awesome Playlist"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-zinc-300">
                   Description (optional)
                 </label>
                 <textarea
                   value={newPlaylistDescription}
                   onChange={(e) => setNewPlaylistDescription(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none resize-none"
+                  className="w-full resize-none rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 outline-none transition focus:border-transparent focus:ring-2 focus:ring-[#4A90E2] dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500"
                   rows={3}
                   placeholder="A collection of my favorite songs..."
                 />
               </div>
+              {createError ? (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                  {createError}
+                </p>
+              ) : null}
               <button
+                type="button"
                 onClick={createPlaylist}
-                disabled={!newPlaylistName.trim()}
-                className="w-full bg-[#4A90E2] text-white py-2 rounded-lg hover:bg-[#357ABD] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!newPlaylistName.trim() || savingPlaylist}
+                className="w-full rounded-lg bg-[#4A90E2] py-2 text-white transition hover:bg-[#357ABD] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Create
+                {savingPlaylist ? 'Creating…' : 'Create'}
               </button>
             </div>
           </div>
@@ -325,40 +393,49 @@ export default function Playlists() {
       )}
 
       {showAddSongModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Add Song to Playlist</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70">
+          <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-gray-200/80 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Add Song to Playlist</h3>
               <button
-                onClick={() => setShowAddSongModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                type="button"
+                onClick={() => {
+                  setShowAddSongModal(false);
+                  setAddSongError(null);
+                }}
+                className="rounded-lg p-2 transition hover:bg-gray-100 dark:hover:bg-zinc-800"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="h-5 w-5 text-gray-600 dark:text-zinc-400" />
               </button>
             </div>
+            {addSongError ? (
+              <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">
+                {addSongError}
+              </p>
+            ) : null}
             {availableSongs.length > 0 ? (
               <div className="space-y-2">
                 {availableSongs.map((song) => (
                   <div
                     key={song.id}
                     onClick={() => addSongToPlaylist(song.id)}
-                    className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition cursor-pointer"
+                    className="flex cursor-pointer items-center gap-4 rounded-lg p-3 transition hover:bg-gray-50 dark:hover:bg-zinc-800/80"
                   >
                     <img
                       src={song.cover_image}
                       alt={song.title}
-                      className="w-12 h-12 rounded object-cover"
+                      className="h-12 w-12 rounded-md object-cover ring-1 ring-black/5 dark:ring-white/10"
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{song.title}</p>
-                      <p className="text-sm text-gray-600 truncate">{song.artist}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-gray-900 dark:text-zinc-50">{song.title}</p>
+                      <p className="truncate text-sm text-gray-600 dark:text-zinc-400">{song.artist}</p>
                     </div>
-                    <Plus className="w-5 h-5 text-gray-400" />
+                    <Plus className="h-5 w-5 text-gray-400 dark:text-zinc-500" />
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600 text-center py-8">
+              <p className="py-8 text-center text-gray-600 dark:text-zinc-400">
                 All songs are already in this playlist
               </p>
             )}

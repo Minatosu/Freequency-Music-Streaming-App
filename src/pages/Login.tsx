@@ -28,20 +28,20 @@ export default function Login({ onToggleAuth }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F9F9] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#F9F9F9] dark:bg-zinc-950 text-gray-900 dark:text-white flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <Music className="w-12 h-12 text-[#4A90E2]" />
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Freequency</h1>
-          <p className="text-gray-600">Sign in to your account</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Freequency</h1>
+          <p className="text-gray-600 dark:text-zinc-400">Sign in to your account</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-8">
+        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-sm p-8 border border-transparent dark:border-zinc-800">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
                 Email
               </label>
               <input
@@ -50,13 +50,13 @@ export default function Login({ onToggleAuth }: LoginProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-50 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none transition"
                 placeholder="you@example.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-2">
                 Password
               </label>
               <input
@@ -65,13 +65,13 @@ export default function Login({ onToggleAuth }: LoginProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-zinc-950 text-gray-900 dark:text-zinc-50 placeholder:text-gray-400 dark:placeholder:text-zinc-500 focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none transition"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
@@ -86,7 +86,7 @@ export default function Login({ onToggleAuth }: LoginProps) {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-zinc-400">
               Don't have an account?{' '}
               <button
                 onClick={onToggleAuth}

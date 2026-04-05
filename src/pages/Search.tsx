@@ -51,27 +51,27 @@ export default function Search() {
   return (
     <div className="pb-32">
       <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-6">Search</h2>
+        <h2 className="mb-6 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white md:text-3xl">Search</h2>
         <div className="relative max-w-2xl">
-          <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-zinc-500" />
           <input
             type="text"
             placeholder="Search for songs, artists, albums, or genres..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4A90E2] focus:border-transparent outline-none transition"
+            className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-12 pr-4 text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-transparent focus:ring-2 focus:ring-[#4A90E2] dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:ring-[#4A90E2]/80"
           />
         </div>
       </div>
 
       {searchQuery.trim() === '' ? (
-        <div className="text-center py-12">
-          <SearchIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-600 text-lg">Start typing to search for music</p>
+        <div className="py-12 text-center">
+          <SearchIcon className="mx-auto mb-4 h-16 w-16 text-gray-300 dark:text-zinc-600" />
+          <p className="text-lg text-gray-600 dark:text-zinc-400">Start typing to search for music</p>
         </div>
       ) : filteredSongs.length > 0 ? (
         <div>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 text-gray-600 dark:text-zinc-400">
             Found {filteredSongs.length} {filteredSongs.length === 1 ? 'result' : 'results'}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -81,8 +81,8 @@ export default function Search() {
           </div>
         </div>
       ) : (
-        <div className="text-center py-12">
-          <p className="text-gray-600 text-lg">No results found for "{searchQuery}"</p>
+        <div className="py-12 text-center">
+          <p className="text-lg text-gray-600 dark:text-zinc-400">No results found for "{searchQuery}"</p>
         </div>
       )}
     </div>
