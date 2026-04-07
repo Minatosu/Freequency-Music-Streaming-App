@@ -29,8 +29,8 @@ export default function SongCard({ song, onPlay, variant = 'default', className 
     <div
       className={[
         isCompact
-          ? 'group cursor-pointer overflow-visible border-0 bg-transparent shadow-none dark:bg-transparent'
-          : 'group cursor-pointer overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-zinc-700/60 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:border-zinc-600 dark:hover:shadow-lg',
+          ? 'group cursor-pointer overflow-visible border-0 bg-transparent shadow-none dark:bg-transparent transition-all duration-200 ease-in-out hover:scale-[1.03]'
+          : 'group cursor-pointer overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-sm transition-all duration-200 ease-in-out hover:scale-[1.03] hover:shadow-md dark:border-zinc-700/60 dark:bg-zinc-900 dark:shadow-black/20 dark:hover:border-zinc-600 dark:hover:shadow-lg',
         className,
       ]
         .filter(Boolean)
@@ -40,7 +40,7 @@ export default function SongCard({ song, onPlay, variant = 'default', className 
         className={[
           'relative aspect-square overflow-hidden bg-zinc-200 dark:bg-zinc-800',
           isCompact
-            ? 'rounded-md shadow-sm ring-1 ring-black/[0.06] transition-shadow duration-200 group-hover:shadow-md dark:ring-white/[0.08]'
+            ? 'rounded-md shadow-sm ring-1 ring-black/[0.06] transition-shadow duration-200 ease-in-out group-hover:shadow-md dark:ring-white/[0.08]'
             : '',
         ].join(' ')}
       >
@@ -48,37 +48,40 @@ export default function SongCard({ song, onPlay, variant = 'default', className 
           <img
             src={MUSIC_PLACEHOLDER_SRC}
             alt=""
-            className={`h-full w-full object-cover transition-transform duration-300 ${isCompact ? 'group-hover:scale-[1.02]' : 'group-hover:scale-105'}`}
+            className="h-full w-full object-cover transition-transform duration-200 ease-in-out"
             aria-hidden
           />
         ) : (
           <img
             src={song.cover_image}
             alt={song.title}
-            className={`h-full w-full object-cover transition-transform duration-300 ${isCompact ? 'group-hover:scale-[1.02]' : 'group-hover:scale-105'}`}
+            className="h-full w-full object-cover transition-transform duration-200 ease-in-out"
             onError={() => setCoverFailed(true)}
           />
         )}
         <button
           type="button"
           onClick={onPlay}
-          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 transition-all group-hover:bg-opacity-30"
+          className="absolute inset-0 flex items-end justify-end p-2 bg-black bg-opacity-0 transition-all duration-200 ease-in-out group-hover:bg-opacity-20"
           aria-label={`Play ${song.title}`}
         >
           <div
             className={[
-              'scale-0 transform rounded-full bg-[#4A90E2] transition-transform group-hover:scale-100',
+              'scale-0 transform rounded-full bg-[#1a6ff4] shadow-md transition-all duration-200 ease-in-out group-hover:scale-100',
               isCompact ? 'p-2' : 'p-3',
             ].join(' ')}
           >
-            <Play className={isCompact ? 'h-4 w-4 text-white' : 'h-6 w-6 text-white'} fill="white" />
+            <Play 
+              className={isCompact ? 'h-4 w-4 text-white ml-0.5' : 'h-5 w-5 text-white ml-0.5'} 
+              fill="white" 
+            />
           </div>
         </button>
       </div>
       <div className={isCompact ? 'p-2' : 'p-4'}>
         <h3
           className={[
-            'truncate font-semibold text-zinc-900 dark:text-white',
+            'truncate font-semibold text-zinc-900 transition-colors duration-200 ease-in-out group-hover:text-[#1a6ff4] dark:text-white',
             isCompact ? 'mb-0.5 text-xs leading-tight' : 'mb-1',
           ].join(' ')}
         >

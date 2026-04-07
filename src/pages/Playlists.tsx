@@ -12,6 +12,7 @@ type PlaylistsProps = {
 
 export default function Playlists({ selectPlaylistId, onSelectPlaylistConsumed }: PlaylistsProps = {}) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistCounts, setPlaylistCounts] = useState<Record<string, number>>({});
   const [playlistsReady, setPlaylistsReady] = useState(false);
   const [songs, setSongs] = useState<Song[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
@@ -64,6 +65,15 @@ export default function Playlists({ selectPlaylistId, onSelectPlaylistConsumed }
 
       if (error) throw error;
       setPlaylists(data || []);
+
+      const { data: countsData } = await supabase.from('playlist_songs').select('playlist_id');
+      if (countsData) {
+        const counts: Record<string, number> = {};
+        countsData.forEach((row: any) => {
+          counts[row.playlist_id] = (counts[row.playlist_id] || 0) + 1;
+        });
+        setPlaylistCounts(counts);
+      }
     } catch (error) {
       console.error('Error loading playlists:', error);
     } finally {
@@ -214,39 +224,56 @@ export default function Playlists({ selectPlaylistId, onSelectPlaylistConsumed }
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           {playlists.length > 0 ? (
-            <div className="space-y-3">
-              {playlists.map((playlist) => (
-                <div
-                  key={playlist.id}
-                  className={`cursor-pointer rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm transition dark:border-zinc-700/60 dark:bg-zinc-900 ${
-                    selectedPlaylist?.id === playlist.id
-                      ? 'ring-2 ring-[#4A90E2] dark:ring-[#4A90E2]/90'
-                      : 'hover:shadow-md dark:hover:border-zinc-600'
-                  }`}
-                  onClick={() => setSelectedPlaylist(playlist)}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-semibold text-gray-900 dark:text-zinc-50">{playlist.name}</h3>
-                      {playlist.description && (
-                        <p className="mt-1 truncate text-sm text-gray-600 dark:text-zinc-400">
-                          {playlist.description}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deletePlaylist(playlist.id);
-                      }}
-                      className="p-2 text-gray-400 transition hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+            <div className="space-y-4">
+              {playlists.map((playlist, index) => {
+                const gradient = [
+                  ['#1e3c72', '#2a5298'],
+                  ['#4facfe', '#00f2fe'],
+                  ['#667eea', '#764ba2'],
+                  ['#11998e', '#38ef7d'],
+                  ['#8E2DE2', '#4A00E0']
+                ][index % 5];
+                
+                return (
+                  <div
+                    key={playlist.id}
+                    className={`group relative flex flex-col justify-end cursor-pointer rounded-2xl overflow-hidden p-6 transition-all duration-300 min-h-[200px] shadow-md hover:shadow-xl hover:-translate-y-1 ${
+                      selectedPlaylist?.id === playlist.id
+                        ? 'ring-4 ring-white shadow-2xl scale-[1.02] z-10'
+                        : 'opacity-90 hover:opacity-100'
+                    }`}
+                    style={{
+                      background: `linear-gradient(135deg, ${gradient[0]} 0%, ${gradient[1]} 100%)`
+                    }}
+                    onClick={() => setSelectedPlaylist(playlist)}
+                  >
+                     <div className="absolute inset-0 bg-black/10 transition-opacity duration-300 group-hover:bg-transparent"></div>
+                     <div className="absolute right-4 bottom-4 w-12 h-12 bg-white text-[#1a6ff4] rounded-full shadow-lg flex items-center justify-center opacity-0 transform translate-y-4 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                       <Play className="w-5 h-5 ml-1" fill="currentColor" />
+                     </div>
+
+                     <div className="relative z-10 w-full overflow-hidden">
+                       <h3 className="text-2xl lg:text-3xl font-extrabold text-white mb-1 drop-shadow-md tracking-tight leading-tight w-full line-clamp-2">
+                         {playlist.name}
+                       </h3>
+                       <p className="text-white/90 font-medium text-sm drop-shadow-sm">
+                         {playlistCounts[playlist.id] || 0} {(playlistCounts[playlist.id] === 1) ? 'song' : 'songs'}
+                       </p>
+                     </div>
+
+                     <button
+                       type="button"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         deletePlaylist(playlist.id);
+                       }}
+                       className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-red-500 rounded-full text-white/80 hover:text-white transition-colors opacity-0 group-hover:opacity-100 shadow-sm"
+                     >
+                       <Trash2 className="w-4 h-4" />
+                     </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="rounded-xl border border-gray-200/80 bg-white p-8 text-center shadow-sm dark:border-zinc-700/60 dark:bg-zinc-900">

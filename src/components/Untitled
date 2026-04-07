@@ -1,0 +1,10 @@
+import FreequencyLogo from './components/FreequencyLogo';
+
+// Full logo with wordmark (for navbar)
+<FreequencyLogo size={40} variant="full" theme="dark" />
+
+// Icon only (for mobile/sidebar)
+<FreequencyLogo size={36} variant="icon" />
+
+// Small favicon size
+<FreequencyLogo size={24} variant="favicon" />

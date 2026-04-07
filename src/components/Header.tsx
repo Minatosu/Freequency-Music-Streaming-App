@@ -1,6 +1,7 @@
 import { useApp } from '../context/AppContext';
-import { Music, Search, Home, List, LogOut } from 'lucide-react';
+import { Search, Home, List, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import { FreequencyLogo } from './FreequencyLogo';
 
 interface HeaderProps {
   currentPage: 'home' | 'search' | 'playlists';
@@ -17,8 +18,7 @@ export default function Header({ currentPage, onNavigate, isDark, onToggleDarkMo
       <div className="max-w-screen-xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Music className="w-8 h-8 text-[#4A90E2]" />
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Freequency</h1>
+            <FreequencyLogo size={36} variant="full" theme={isDark ? 'dark' : 'light'} />
           </div>
 
           <nav className="flex items-center gap-6">

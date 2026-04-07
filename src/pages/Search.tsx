@@ -65,9 +65,30 @@ export default function Search() {
       </div>
 
       {searchQuery.trim() === '' ? (
-        <div className="py-12 text-center">
-          <SearchIcon className="mx-auto mb-4 h-16 w-16 text-gray-300 dark:text-zinc-600" />
-          <p className="text-lg text-gray-600 dark:text-zinc-400">Start typing to search for music</p>
+        <div>
+          <h3 className="mb-4 text-lg font-bold text-zinc-900 dark:text-white md:text-xl">Browse all</h3>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {[
+              { name: 'Pop', color: 'bg-pink-700 dark:bg-pink-800' },
+              { name: 'Hip-Hop', color: 'bg-orange-700 dark:bg-orange-800' },
+              { name: 'Rock', color: 'bg-red-700 dark:bg-red-800' },
+              { name: 'Indie', color: 'bg-emerald-700 dark:bg-emerald-800' },
+              { name: 'R&B', color: 'bg-purple-700 dark:bg-purple-800' },
+              { name: 'Bollywood', color: 'bg-amber-700 dark:bg-amber-800' },
+              { name: 'Soul', color: 'bg-blue-700 dark:bg-blue-800' },
+              { name: 'Electronic', color: 'bg-cyan-700 dark:bg-cyan-800' },
+              { name: 'Oldies', color: 'bg-stone-700 dark:bg-stone-800' },
+              { name: 'Lo-Fi', color: 'bg-indigo-700 dark:bg-indigo-800' },
+            ].map((genre) => (
+              <button
+                key={genre.name}
+                onClick={() => setSearchQuery(genre.name)}
+                className={`flex aspect-[4/3] sm:aspect-video items-center justify-center rounded-xl overflow-hidden ${genre.color} p-4 shadow-sm transition-transform hover:scale-105 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#1a6ff4]`}
+              >
+                <span className="text-lg font-bold tracking-wide text-white drop-shadow-sm">{genre.name}</span>
+              </button>
+            ))}
+          </div>
         </div>
       ) : filteredSongs.length > 0 ? (
         <div>

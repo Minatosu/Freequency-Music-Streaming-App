@@ -224,6 +224,8 @@ export default function Home({ onGoToPlaylists, onGoToSearch }: HomeProps) {
   const [songs, setSongs] = useState<Song[]>([]);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeGenre, setActiveGenre] = useState('All');
+  const GENRES = ['All', 'Pop', 'Hip-Hop', 'Rock', 'Indie', 'R&B', 'Bollywood'];
   const { playSong, user, currentSong } = useApp();
 
   const loadData = useCallback(async () => {
@@ -260,9 +262,13 @@ export default function Home({ onGoToPlaylists, onGoToSearch }: HomeProps) {
     loadData();
   }, [loadData]);
 
+  const filteredSongs = useMemo(() => {
+    return activeGenre === 'All' ? songs : songs.filter(s => s.genre?.trim().toLowerCase() === activeGenre.toLowerCase());
+  }, [songs, activeGenre]);
+
   const { trending: trendingSongs, newReleases, suggested: suggestedSongs, genreSections } = useMemo(
-    () => computeHomeFeed(songs, currentSong),
-    [songs, currentSong]
+    () => computeHomeFeed(filteredSongs, currentSong),
+    [filteredSongs, currentSong]
   );
 
   const handlePlaySong = (song: Song, queue: Song[]) => {
@@ -296,9 +302,92 @@ export default function Home({ onGoToPlaylists, onGoToSearch }: HomeProps) {
 
   return (
     <div className="pb-32">
-      <header className="mb-8 md:mb-10">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white md:text-3xl">Home</h1>
-      </header>
+      <div className="mb-8 pt-2">
+        <div className="flex items-center justify-between mb-8">
+          <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-[#1a6ff4]">
+            What's hot right now
+          </p>
+          {onGoToSearch && (
+            <button
+              onClick={onGoToSearch}
+              className="group flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-500 transition hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            >
+              See all trending
+              <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          )}
+        </div>
+
+        <div className="relative flex justify-center items-center h-[17rem] md:h-72 mb-10 w-full rounded-2xl md:rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(26,111,244,0.15)] ring-1 ring-black/5 dark:ring-white/5">
+          {/* Concert / Artist Vibe Background */}
+          <div className="absolute inset-0 z-0">
+            <img 
+              src="https://images.unsplash.com/photo-1540039155732-d688147d3419?auto=format&fit=crop&w=1200&q=80" 
+              alt="Live Concert" 
+              className="w-full h-full object-cover opacity-80"
+            />
+            {/* Blurs and gradients to make cards pop */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0f172a]/90 via-[#1a3a6e]/70 to-[#0f172a]/90 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/50 dark:from-zinc-950/80 via-transparent to-transparent"></div>
+          </div>
+          
+          {/* Deck of Cards */}
+          <div className="relative z-10 w-full h-full flex justify-center items-center group/deck">
+            {trendingSongs.slice(0, 5).map((song, idx) => {
+              const positionClasses = 
+                idx === 0 ? 'z-50 scale-105 md:scale-[1.12] -translate-y-2' :
+                idx === 1 ? 'z-40 -translate-x-[80%] md:-translate-x-[110%] -rotate-[5deg] scale-[0.98] opacity-95 translate-y-2' :
+                idx === 2 ? 'z-30 translate-x-[80%] md:translate-x-[110%] rotate-[5deg] scale-[0.98] opacity-95 translate-y-2' :
+                idx === 3 ? 'z-20 opacity-0 sm:opacity-85 pointer-events-none sm:pointer-events-auto -translate-x-[160%] md:-translate-x-[215%] -rotate-[10deg] scale-90 translate-y-6' :
+                'z-10 opacity-0 sm:opacity-85 pointer-events-none sm:pointer-events-auto translate-x-[160%] md:translate-x-[215%] rotate-[10deg] scale-90 translate-y-6';
+              
+              return (
+                <div 
+                  key={song.id}
+                  onClick={() => handlePlaySong(song, trendingSongs)}
+                  className={`absolute flex flex-col items-center group/card transition-all duration-500 ease-out hover:cursor-pointer hover:!z-[60] hover:!scale-125 hover:!-translate-y-4 ${positionClasses}`}
+                >
+                  <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-[13.5rem] md:h-[13.5rem] rounded-2xl shadow-[0_30px_60px_rgba(0,0,0,0.5)] overflow-hidden ring-2 ring-white/20 dark:ring-white/10 group-hover/card:ring-[#1a6ff4]/50 transition-colors">
+                    <img 
+                      src={song.cover_image || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&q=80'} 
+                      alt={song.title} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
+                    />
+                  </div>
+                  {/* Text below the card edge */}
+                  <div className="mt-3 text-center px-1">
+                    <p className="text-[13px] md:text-sm font-bold text-white drop-shadow-md truncate max-w-[140px] md:max-w-[180px] leading-tight">
+                      {song.title}
+                    </p>
+                    <p className="text-[10px] md:text-[11px] text-[#1a6ff4] truncate font-extrabold uppercase tracking-[0.08em] mt-1 drop-shadow flex justify-center max-w-[140px] md:max-w-[180px]">
+                      {song.artist}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+            {trendingSongs.length === 0 && (
+              <div className="text-white/60">No trending songs available.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-4 [scrollbar-width:none]">
+          {GENRES.map(g => (
+            <button 
+              key={g} 
+              onClick={() => setActiveGenre(g)}
+              className={`shrink-0 px-5 py-2 mt-2 rounded-full text-sm font-semibold transition-colors border shadow-sm ${
+                 activeGenre === g 
+                 ? 'bg-[#1a6ff4] text-white border-[#1a6ff4]'
+                 : 'border-zinc-300 text-zinc-700 bg-white hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:bg-zinc-900 dark:hover:bg-zinc-800'
+              }`}
+            >
+               {g}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {user && (
         <FeedRow
