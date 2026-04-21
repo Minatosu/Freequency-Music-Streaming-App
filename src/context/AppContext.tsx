@@ -39,10 +39,17 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+import { usePlayerStore } from '../store/playerStore';
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+
+  useEffect(() => {
+    usePlayerStore.getState().setCurrentSong(currentSong);
+  }, [currentSong]);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState<Song[]>([]);
   const [currentTime, setCurrentTime] = useState(0);
@@ -65,7 +72,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const playSong = useCallback((song: Song, songQueue?: Song[]) => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.src = song.file_url;
+    
+    let url = song.file_url;
+    if (url) {
+      url = url
+        .replace(/\/image\/upload\//gi, '/video/upload/')
+        .replace(/\/v\d+\//gi, '/')
+        .replace(/_?\.mp3$/i, '_.mp3');
+    }
+    audio.src = url || '';
+    
     void audio.play().catch(() => setIsPlaying(false));
     setCurrentSong(song);
     setIsPlaying(true);

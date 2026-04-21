@@ -17,7 +17,10 @@ export default function Header({ currentPage, onNavigate, isDark, onToggleDarkMo
     <header className="sticky top-0 z-40 border-b border-gray-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/85">
       <div className="max-w-screen-xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div 
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => onNavigate('home')}
+          >
             <FreequencyLogo size={36} variant="full" theme={isDark ? 'dark' : 'light'} />
           </div>
 
