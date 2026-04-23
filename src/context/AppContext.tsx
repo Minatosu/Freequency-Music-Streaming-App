@@ -73,14 +73,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const audio = audioRef.current;
     if (!audio) return;
     
-    let url = song.file_url;
-    if (url) {
-      url = url
-        .replace(/\/image\/upload\//gi, '/video/upload/')
-        .replace(/\/v\d+\//gi, '/')
-        .replace(/_?\.mp3$/i, '_.mp3');
-    }
-    audio.src = url || '';
+    audio.src = song.file_url || '';
     
     void audio.play().catch(() => setIsPlaying(false));
     setCurrentSong(song);
